@@ -1,0 +1,1055 @@
+{
+  "name": "Project Scout stabile - Task Manager Repo",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -768,
+        -480
+      ],
+      "id": "cbf90e00-7854-4be7-980b-4ec39d6aea92",
+      "name": "When chat message received",
+      "webhookId": "76765803-7648-46ed-954c-e40657ab03e7"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query }}",
+        "options": {
+          "systemMessage": "# AI Agent for Task Manager Repository\n\nYou are an AI assistant for analyzing the GitHub repository \"project-scout\" (TypeScript task management app).\n\n**Repository**: jessicatrenta/project-scout\n\n## CRITICAL RULES\n\n### 1. Never Invent Data\n- If a tool returns `count: 0` or empty array → Say \"No results found\"\n- NEVER invent commit SHAs, authors, dates, or any data\n- Only present data that tools explicitly returned\n- When in doubt, call a tool - never guess\n\n### 2. Always Process Tool Results\nWhen tools return data with `count > 0`:\n- **YOU MUST show the data**\n- Loop through the array and present each item\n- Don't say \"no results\" when count > 0\n\n### 3. Repository Parameter\nAlways pass `\"repository\": \"jessicatrenta/project-scout\"` to every tool.\n\n## Available Tools\n\n**List tools** (use parameters like `labels`, `state`, `author`, `path`):\n- **list_issues**: Parameters: `state`, `labels`, `assignee`, `sort`\n  - NO `input` parameter!\n  - Use `labels` for filtering by label\n- **list_commits**: Parameters: `path`, `author`, `since`, `until`, `sha`\n  - NO `input` parameter!\n  - Use `path` for filtering by file\n\n**Search tools** (use `input` parameter for keyword):\n- **search_github_issues**: Parameter: `input` (keyword to search)\n- **search_commits**: Parameter: `input` (keyword to search)\n- **search_code**: Parameter: `input` (keyword to search)\n\n**Detail tools** (use `input` parameter for ID):\n- **get_issue_details**: Parameter: `input` (issue number)\n- **get_commit_details**: Parameter: `input` (commit SHA)\n- **get_pull_request_details**: Parameter: `input` (prNumber)\n\n### Tool Selection Guide\n\nUser asks → Use this tool with these parameters:\n\n**For listing issues**:\n- \"Show all issues\" → `list_issues` with `state: \"open\"`\n- \"Show bugs\" / \"all bugs\" → `list_issues` with `labels: \"bug\"` ← NOT `input`!\n- \"Show features\" → `list_issues` with `labels: \"feature\"`\n- \"Critical issues\" → `list_issues` with `labels: \"critical\"`\n\n**For searching issues by keyword**:\n- \"Find issues about memory\" → `search_github_issues` with `input: \"memory\"`\n\n**Key difference**:\n- list_issues uses `labels` parameter for filtering by label\n- search_github_issues uses `input` parameter for text search\n\n## Output Templates\n\n### For Issues (when count > 0):\n```\n[OK] Found {count} issue(s):\n\nIssue #{number}: {title}\nLabels: {labels}\nStatus: {state}\n{user} • {date}\n```\n\nShow ALL issues in the array, not just the first.\n\n### For Commits (when count > 0):\n```\n[OK] Found {count} commit(s):\n\n{sha} • {author}\n{date}\n\"{message}\"\n```\n\nShow ALL commits in the array.\n\n### For Empty Results (when count = 0):\n```\n[ERRORE] No results found matching the criteria.\n```\n\n## Search Strategies\n\n**Finding commits for an issue:**\n1. Try `search_commits` with \"#3\"\n2. If 0 results, get issue details and search with main keyword\n3. If still 0, honestly say \"No commits found - issue may be unresolved\"\n\n**Multiple keywords (OR logic):**\nTools accept ONE keyword at a time. If user asks \"X or Y\":\n1. Call tool with \"X\"\n2. Call tool with \"Y\"  \n3. Combine results\n\n## Response Style\nFORMATTING RULES:\n\n- DO NOT use emojis or special unicode symbols\n- USE markdown for formatting:\n  - **bold** for emphasis\n  - `code` for technical names, files, classes\n  - ### Headings for sections\n  - - Bullet lists for collections\n  - 1. Numbered lists for sequences\n- Use [OK], [ERROR], [WARNING] for status indicators\n- Separate sections with ---\n- Keep responses clean and professional\n- Never invent data to \"be helpful\"\n- If you don't have data, say so and offer to search\n\nEXAMPLE OF WELL-FORMATTED RESPONSE:\n\n### Issues Found\n\nI found 3 issues related to memory leak:\n\n1. Issue #3569: **Memory Usage Increase** (open)\n   Affected file: `RingBufferLogEvent.java`\n   Link: https://github.com/apache/logging-log4j2/issues/3569\n\n2. Issue #3511: **Possible Memory Leak in StatusLogger** (closed)\n   Fixed in version `2.24.4`\n   Link: https://github.com/apache/logging-log4j2/issues/3511\n\n3. Issue #3282: **Memory leak with exceptions** (open)\n   Reporter: `user123`\n   Link: https://github.com/apache/logging-log4j2/issues/3282\n\n---\n\nWould you like me to analyze one of these in detail?\n\nFORMATTING GUIDELINES BY CONTENT TYPE:\n\n**Issue Lists:**\n- Use numbered lists (1. 2. 3.)\n- Include: issue number, title (bold), status (open/closed)\n- Add relevant metadata (file, reporter, version) on new lines\n- Always include GitHub link\n\n**Commit Lists:**\n- Use numbered lists\n- Format: Commit `SHA`: **Message**\n- Include: author, date\n- Always include GitHub link\n\n**Code Search Results:**\n- Use numbered lists\n- Format: File path in `code style`\n- Include link to view file\n\n**Timeline/History:**\n- Use ### heading for main title\n- Chronological order (oldest first or newest first based on context)\n- Use **bold** for key events\n- Separate major phases with ---\n\n**Status Messages:**\n- Use [OK] for success\n- Use [ERROR] for errors\n- Use [WARNING] for warnings or important notes\n\n**Technical Terms:**\n- Always use `backticks` for: class names, method names, file names, variables\n- Example: The `AsyncLogger` class uses `RingBufferLogEvent`\n\n**Links:**\n- Always provide full GitHub URLs\n- Place on separate line for better readability\n- Example:\n  Link: https://github.com/...\n\nALWAYS:\n- Structure responses with clear sections\n- Use appropriate markdown\n- Keep technical terms in `code format`\n- Provide clickable links\n- Use status badges when relevant\n- Respond in English (content) with English formatting (markdown)\n\n\n**Remember**: Tools are your only source of truth. Use them, trust them, never invent beyond them.\n```\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -64,
+        -272
+      ],
+      "id": "cf2eb7bf-a141-4df6-9ce3-c52d530c42a0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:8b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        -32
+      ],
+      "id": "278aa0d6-cbc9-4858-89a2-f70b62d57093",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "IU7oA9bGpjrJ5AZv",
+          "name": "ollama-local"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -16
+      ],
+      "id": "043ed259-c585-4822-979a-d034bdf36f00",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "description": "Cerca issue nel repository GitHub per keyword. Usa questo tool quando l'utente chiede di cercare, trovare o listare issue. input: input e repo",
+        "workflowId": {
+          "__rl": true,
+          "value": "GIXLTiDP8zZ1B9kX",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/GIXLTiDP8zZ1B9kX",
+          "cachedResultName": "search_github_issues"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "object",
+            "properties": "{\n    \"input\": {\n      \"type\": \"string\",\n      \"description\": \"Keyword da cercare nelle issue\"\n    },\n  \"repository\": {\n      \"type\": \"string\",\n      \"description\": \"la repository da interrogare\"\n    }\n  }",
+            "required": "[\"input\", \"repository\"]"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "required",
+              "displayName": "required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        96
+      ],
+      "id": "41d5c1e8-4934-41a4-a37a-35002c2daad0",
+      "name": "search_github_issues"
+    },
+    {
+      "parameters": {
+        "description": "Ottiene i dettagli completi di una issue specifica dato il suo numero. Usa questo tool quando l'utente chiede dettagli, informazioni complete, o specifiche di una issue. input: input (solo il numero) e repo\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "KQsIQQ7FaduFdK3m",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/KQsIQQ7FaduFdK3m",
+          "cachedResultName": "get_issue_details"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "object",
+            "properties": "{\n    \"input\": {\n      \"type\": \"string\",\n      \"description\": \"Numero dell'issue (solo il numero, senza #)\"\n    },\n  \"repository\": {\n      \"type\": \"string\",\n      \"description\": \"la repository da interrogare\"\n    }\n  }",
+            "required": "[\"input\", \"repository\"]"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "required",
+              "displayName": "required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        -48
+      ],
+      "id": "fd8ec16d-873f-4218-a314-b4d1482a86a2",
+      "name": "get_issue_details"
+    },
+    {
+      "parameters": {
+        "description": "Cerca nel codice del repository per trovare file che contengono una keyword specifica. Usa questo quando l'utente chiede dove viene usata una funzione, classe, o variabile. input: input e repo\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "X70Fdyrq54iAVdQu",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/X70Fdyrq54iAVdQu",
+          "cachedResultName": "search_code"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "object",
+            "properties": "{\n    \"input\": {\n      \"type\": \"string\",\n      \"description\": \"Keyword da cercare nel codice\"\n    },\n  \"repository\": {\n      \"type\": \"string\",\n      \"description\": \"la repository da interrogare\"\n    }\n  }",
+            "required": "[\"input\", \"repository\"]"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "required",
+              "displayName": "required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        96
+      ],
+      "id": "a6fe4e63-f149-47df-bc7d-5b5986470109",
+      "name": "search_code"
+    },
+    {
+      "parameters": {
+        "description": "Ottiene i dettagli completi di un commit specifico dato il suo SHA. Mostra file modificati, statistiche, e messaggio completo. input: input e repo\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "qgLc1RrVsxkmTaEs",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/qgLc1RrVsxkmTaEs",
+          "cachedResultName": "get_commit_details"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "object",
+            "properties": "{\n    \"input\": {\n      \"type\": \"string\",\n      \"description\": \"SHA del commit (primi 7 caratteri vanno bene)\"\n    },\n  \"repository\": {\n      \"type\": \"string\",\n      \"description\": \"la repository da interrogare\"\n    }\n  }",
+            "required": "[\"input\", \"repository\"]"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "required",
+              "displayName": "required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        -48
+      ],
+      "id": "59a1a481-5419-4060-8543-cef12745bc84",
+      "name": "get_commit_details"
+    },
+    {
+      "parameters": {
+        "description": "Ottiene i dettagli completi di una Pull Request dato il suo numero. Mostra stato, file modificati, e informazioni di merge.\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "Esg3lLUArtiY6OaH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Esg3lLUArtiY6OaH",
+          "cachedResultName": "get_pull_request_details"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "object",
+            "properties": "{\n    \"prNumber\": {\n      \"type\": \"string\",\n      \"description\": \"Numero della Pull Request (solo il numero, senza #)\"\n    },\n  \"repository\": {\n      \"type\": \"string\",\n      \"description\": \"la repository da interrogare\"\n    }\n  }",
+            "required": "[\"input\", \"repository\"]"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "required",
+              "displayName": "required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        240
+      ],
+      "id": "bda67625-0add-46c0-b0ad-1331fdc470d8",
+      "name": "get_pull_request_details"
+    },
+    {
+      "parameters": {
+        "description": "Cerca nei commit del repository per keyword nel messaggio. Usa questo quando l'utente chiede quali commit hanno modificato qualcosa o quando è stata implementata una feature. input: input e repo\n",
+        "workflowId": {
+          "__rl": true,
+          "value": "BHqMNMhE26cXoRE5",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/BHqMNMhE26cXoRE5",
+          "cachedResultName": "search_commits"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "object",
+            "properties": "{\n    \"input\": {\n      \"type\": \"string\",\n      \"description\": \"Keyword da cercare nei messaggi di commit\"\n    },\n  \"repository\": {\n      \"type\": \"string\",\n      \"description\": \"la repository da interrogare\"\n    }\n  }",
+            "required": "[\"input\", \"repository\"]"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "required",
+              "displayName": "required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        240
+      ],
+      "id": "ab583e84-8fe4-416a-9b16-d07cbe98d740",
+      "name": "search_commits"
+    },
+    {
+      "parameters": {
+        "description": "Lists issues from the repository with optional filters. Much more flexible than search. Use this when user wants to see issues with specific criteria or all issues. No keyword required.",
+        "workflowId": {
+          "__rl": true,
+          "value": "cBSwBCIjwTTVJola",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/cBSwBCIjwTTVJola",
+          "cachedResultName": "list_issues"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "object",
+            "properties": "{\n    \"state\": {\n      \"type\": \"string\",\n      \"description\": \"Filter by state: 'open', 'closed', or 'all'. Default: 'open'\",\n      \"enum\": [\"open\", \"closed\", \"all\"]\n    },\n    \"labels\": {\n      \"type\": \"string\",\n      \"description\": \"Filter by labels (comma-separated). Example: 'bug,critical'\"\n    },\n    \"assignee\": {\n      \"type\": \"string\",\n      \"description\": \"Filter by assignee username\"\n    },\n    \"sort\": {\n      \"type\": \"string\",\n      \"description\": \"Sort by: 'created', 'updated', or 'comments'. Default: 'created'\",\n      \"enum\": [\"created\", \"updated\", \"comments\"]\n    }\n  }",
+            "required": "[\"repository\"]"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "required",
+              "displayName": "required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        240
+      ],
+      "id": "0100a4e9-53e7-42ef-8560-1c8f5ad0dbf0",
+      "name": "list_issues"
+    },
+    {
+      "parameters": {
+        "description": "Lists commits from the repository with optional filters. Can filter by file path, author, or date range. Use this to see all commits or commits related to specific files/authors/dates. Input: \n",
+        "workflowId": {
+          "__rl": true,
+          "value": "Zgiy4L4REwk9wH5X",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Zgiy4L4REwk9wH5X",
+          "cachedResultName": "list_commits"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "object",
+            "properties": "{\n    \"path\": {\n      \"type\": \"string\",\n      \"description\": \"Filter by file path. Shows only commits that modified this specific file\"\n    },\n    \"author\": {\n      \"type\": \"string\",\n      \"description\": \"Filter by author username or email\"\n    },\n    \"since\": {\n      \"type\": \"string\",\n      \"description\": \"Only commits after this date (ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ)\"\n    },\n    \"until\": {\n      \"type\": \"string\",\n      \"description\": \"Only commits before this date (ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ)\"\n    },\n    \"sha\": {\n      \"type\": \"string\",\n      \"description\": \"Branch name or commit SHA. Default: 'main'\"\n    }\n}",
+            "required": "[]"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "properties",
+              "displayName": "properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "required",
+              "displayName": "required",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        240
+      ],
+      "id": "c719aaa3-65c0-4d4d-9c63-b17ecaeb213a",
+      "name": "list_commits"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-opus-4-5-20251101",
+          "mode": "list",
+          "cachedResultName": "Claude Opus 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        192
+      ],
+      "id": "52201d56-6c6f-4303-a40a-ef904250c844",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "mqT6ATjRJBas88t5",
+          "name": "Anthropic account Marzo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/projectscouttaskmanager",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -768,
+        -272
+      ],
+      "id": "25ac85c3-84b5-44f3-8a3e-a1ad68998258",
+      "name": "Webhook",
+      "webhookId": "c3524cb1-91c1-451f-a5b8-98600681c494"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        512,
+        -272
+      ],
+      "id": "11cec4ec-0c6d-43f8-9d23-362558ccc17e",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6a131f02-3550-43cc-ab33-4df384350e09",
+              "name": "query",
+              "value": "={{ $json.body.query }}",
+              "type": "string"
+            },
+            {
+              "id": "42c1927d-7460-48b3-8b66-9c411c9e0581",
+              "name": "repository",
+              "value": "={{ $json.body.repository }}",
+              "type": "string"
+            },
+            {
+              "id": "a3782315-9809-44b1-8898-614bc76878e0",
+              "name": "sessionId",
+              "value": "={{ $json.body.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -528,
+        -272
+      ],
+      "id": "219ac1f1-bc59-403a-9270-93d17432254c",
+      "name": "Extract Parameters"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Rimuove ricorsivamente tutte le emoji da un oggetto JSON\n */\nfunction removeEmoji(text) {\n  if (!text || typeof text !== 'string') return text;\n  \n  return text\n    .replace(/[\\u{1F600}-\\u{1F64F}]/gu, '') // Emoticons\n    .replace(/[\\u{1F300}-\\u{1F5FF}]/gu, '') // Misc Symbols\n    .replace(/[\\u{1F680}-\\u{1F6FF}]/gu, '') // Transport\n    .replace(/[\\u{1F1E0}-\\u{1F1FF}]/gu, '') // Flags\n    .replace(/[\\u{2600}-\\u{26FF}]/gu, '')   // Misc symbols\n    .replace(/[\\u{2700}-\\u{27BF}]/gu, '')   // Dingbats\n    .replace(/[\\u{FE00}-\\u{FE0F}]/gu, '')   // Variation Selectors\n    .replace(/[\\u{1F900}-\\u{1F9FF}]/gu, '') // Supplemental Symbols\n    .replace(/[\\u{1FA70}-\\u{1FAFF}]/gu, '') // Extended-A\n    .replace(/[\\u{E0000}-\\u{E007F}]/gu, '') // Tags\n    .replace(/[\\u{24C2}-\\u{1F251}]/gu, '') // Enclosed characters\n    .trim();\n}\n\n/**\n * Pulisce ricorsivamente tutte le stringhe in un oggetto\n */\nfunction cleanObject(obj) {\n  if (typeof obj === 'string') {\n    return removeEmoji(obj);\n  }\n  \n  if (Array.isArray(obj)) {\n    return obj.map(item => cleanObject(item));\n  }\n  \n  if (obj !== null && typeof obj === 'object') {\n    const cleaned = {};\n    for (const key in obj) {\n      cleaned[key] = cleanObject(obj[key]);\n    }\n    return cleaned;\n  }\n  \n  return obj;\n}\n\n// Prendi l'output dall'AI Agent\nconst agentOutput = $input.first().json;\n\n// Pulisci TUTTO l'oggetto ricorsivamente\nconst cleanedOutput = cleanObject(agentOutput);\n\n// Ritorna output pulito\nreturn [{\n  json: {\n    output: cleanedOutput.output || JSON.stringify(cleanedOutput),\n    status: \"success\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -272
+      ],
+      "id": "c9098a82-f667-44ce-b853-6e5ca3e97224",
+      "name": "Clean Output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6ca15aeb-291a-4444-bbd3-1d8dd86d9f1a",
+              "name": "query",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "59882ab0-f116-46da-97b4-330f5d1c1065",
+              "name": "repository",
+              "value": "jessicatrenta/project-scout",
+              "type": "string"
+            },
+            {
+              "id": "04bfd9f7-60de-44e8-859b-c4d67aababe9",
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -528,
+        -480
+      ],
+      "id": "9989afd6-5094-4ae0-87e5-0882a9084287",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "content": "## Direct test in n8n",
+        "height": 224,
+        "width": 544
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        -544
+      ],
+      "id": "77f4a4f2-6883-4d17-a36e-5d376f98d7e7",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## MODELS\n\n### NDA Compliant\n\nAWS Bedrock (Claude 3.5 Sonnet) \n\nAzure OpenAI (GPT-4o\n\nGoogle Vertex AI (Claude o Gemini)\n\nLocal - Ollama \n\n### NDA NON Compliant\n\nAnthropic API (Claude) - direct\nOpenAI API - direct",
+        "height": 432,
+        "width": 784,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        -96
+      ],
+      "id": "b317e7e3-a97e-4d62-827d-7bec59e86514",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        192
+      ],
+      "id": "90138ae3-ba21-4532-87f4-6887b6d4c1fb",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "qdPl4Up6SgTUIIKE",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -32
+      ],
+      "id": "27b012e9-76d3-4537-860f-86c25ff41abb",
+      "name": "Azure OpenAI Chat Model",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "x0q4WxOx5CAlax8E",
+          "name": "Azure Open AI account 2sweden"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAwsBedrock",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        -32
+      ],
+      "id": "14dfa71f-1130-48e0-8d20-d563098c796f",
+      "name": "AWS Bedrock Chat Model"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_github_issues": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_issue_details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_code": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_commit_details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_pull_request_details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_commits": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list_issues": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list_commits": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Clean Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Parameters": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Output": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b1ea0256-8c29-4445-9641-a9c4dcdbd1c4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6ac8d2dc76203984938fcda77a51bdd19f26607819abd9cdafd1682d34f1ed7a"
+  },
+  "id": "4luEQwyoUXAq8b2Z",
+  "tags": [
+    {
+      "updatedAt": "2025-12-16T21:25:10.044Z",
+      "createdAt": "2025-12-16T21:25:10.044Z",
+      "id": "rd3WVRGvAYwiuAq5",
+      "name": "AgnosticGitHubTool"
+    }
+  ]
+}

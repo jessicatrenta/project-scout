@@ -1,0 +1,226 @@
+{
+  "name": "get_pull_request_details",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "input"
+            },
+            {
+              "name": "repository"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -192,
+        144
+      ],
+      "id": "379a93c0-f4f2-45b5-9578-6b173a48ac17",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e0eff82a-55e0-48c0-a0f8-71307d41bf6b",
+              "name": "repository",
+              "value": "={{ $json.repository }}",
+              "type": "string"
+            },
+            {
+              "id": "23626445-8d10-42b6-a540-751e75f04a1c",
+              "name": "pr_number",
+              "value": "={{ $json.input.toString().replace('#', '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        16,
+        144
+      ],
+      "id": "be3a15c4-8ddf-40af-bcb0-48a678b9b721",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $json.repository }}/pulls/{{ $json.pr_number }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        224,
+        144
+      ],
+      "id": "1336acf1-ccfa-43f4-a1c6-da54aed716cf",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "UgAFYi0V1BhbBKJF",
+          "name": "myGitHub HeaderAuth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formatta dettagli PR\nconst item = $input.all()[0].json;\n\nreturn [{ \n  json: {\n    number: item.number,\n    title: item.title,\n    state: item.state,\n    body: item.body,\n    url: item.html_url,\n    created_at: item.created_at,\n    updated_at: item.updated_at,\n    merged_at: item.merged_at,\n    user: item.user.login,\n    base: item.base.ref,\n    head: item.head.ref,\n    mergeable: item.mergeable,\n    commits: item.commits,\n    changed_files: item.changed_files\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        144
+      ],
+      "id": "f94b8c21-9512-47e7-a2e9-90bc0a2015f7",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -32
+      ],
+      "id": "9c94db69-9240-42fb-ba00-07a25a8f7f52",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"repository\": \"jessicatrenta/project-scout\",\n  \"input\": \"13\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -192,
+        -32
+      ],
+      "id": "916b812a-e89e-4da9-8372-d941e5d89db2",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -400,
+        -208
+      ],
+      "id": "684d2907-90ce-459c-9b7d-86448d05f9b0",
+      "name": "When chat message received",
+      "webhookId": "76765803-7648-46ed-954c-e40657ab03e7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8d586640-7071-477b-a464-0501cdb07775",
+  "meta": {
+    "instanceId": "6ac8d2dc76203984938fcda77a51bdd19f26607819abd9cdafd1682d34f1ed7a"
+  },
+  "id": "Esg3lLUArtiY6OaH",
+  "tags": [
+    {
+      "updatedAt": "2025-12-16T21:25:10.044Z",
+      "createdAt": "2025-12-16T21:25:10.044Z",
+      "id": "rd3WVRGvAYwiuAq5",
+      "name": "AgnosticGitHubTool"
+    }
+  ]
+}

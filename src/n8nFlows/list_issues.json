@@ -1,0 +1,224 @@
+{
+  "name": "list_issues",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "state"
+            },
+            {
+              "name": "labels"
+            },
+            {
+              "name": "assignee"
+            },
+            {
+              "name": "sort"
+            },
+            {
+              "name": "repository"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        -48
+      ],
+      "id": "75378635-399a-45b8-a2cb-f04b433dcb03",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        144,
+        -48
+      ],
+      "id": "fcc8658d-e96b-4099-b585-aaca4bdaeb59",
+      "name": "HTTP Request",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "7ZB0pk2jfwrxkl9F",
+          "name": "Unnamed credential"
+        },
+        "httpHeaderAuth": {
+          "id": "UgAFYi0V1BhbBKJF",
+          "name": "myGitHub HeaderAuth"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -288
+      ],
+      "id": "9824ca16-9b06-40fc-89af-cae00e7e1aa3",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"repo\": \"jessicatrenta/task-manager-test\",\n  \"state\": \"ciccio\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -480,
+        -288
+      ],
+      "id": "ebe6abe0-82b9-429d-9079-090f2da203d1",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepara parametri con valori di default\nconst input = $input.all()[0].json;\n\nreturn [{\n  json: {\n    repo: input.repo || input.repository,\n    state: input.state || \"open\",\n    labels: input.labels || \"\",\n    assignee: input.assignee || \"\",\n    sort: input.sort || \"created\",\n    per_page: parseInt(input.per_page || \"100\")\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -48
+      ],
+      "id": "d5a6e492-727c-4333-a894-db705361434d",
+      "name": "Parse Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gestione corretta per n8n\nconst items = $input.all();\n\nif (!items || items.length === 0) {\n  return [{ \n    json: { \n      issues: [], \n      count: 0,\n      message: \"No data received\"\n    } \n  }];\n}\n\n// In n8n, quando HTTP Request restituisce un array,\n// ogni elemento dell'array diventa un item separato\nlet issues = [];\n\n// Caso 1: Ogni item è una singola issue\nif (items.length > 1) {\n  // items = [{json: issue1}, {json: issue2}, ...]\n  issues = items\n    .map(item => item.json)\n    .filter(issue => issue && !issue.pull_request);\n}\n// Caso 2: Un solo item che contiene l'array\nelse if (items.length === 1) {\n  const data = items[0].json;\n  \n  // Se è già un array\n  if (Array.isArray(data)) {\n    issues = data.filter(issue => !issue.pull_request);\n  }\n  // Se l'array è in una proprietà\n  else if (data.items && Array.isArray(data.items)) {\n    issues = data.items.filter(issue => !issue.pull_request);\n  }\n  // Se è un singolo oggetto issue\n  else if (data && data.number && data.title) {\n    issues = [data];\n  }\n}\n\nif (issues.length === 0) {\n  return [{ \n    json: { \n      issues: [], \n      count: 0,\n      message: \"No issues found\"\n    } \n  }];\n}\n\n// Formatta ogni issue\nconst formatted = issues.map(issue => ({\n  number: issue.number,\n  title: issue.title,\n  state: issue.state,\n  body: issue.body || \"\",\n  url: issue.html_url,\n  created_at: issue.created_at,\n  updated_at: issue.updated_at,\n  closed_at: issue.closed_at || null,\n  labels: (issue.labels || []).map(l => l.name),\n  assignees: (issue.assignees || []).map(a => a.login),\n  user: issue.user ? issue.user.login : \"unknown\",\n  comments: issue.comments || 0\n}));\n\nreturn [{ \n  json: { \n    issues: formatted,\n    count: formatted.length,\n    message: `Found ${formatted.length} issue(s)`\n  } \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -48
+      ],
+      "id": "de26a08f-85df-42f5-bd04-4e90dcb30cbf",
+      "name": "Format Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Costruisci URL per GitHub API\nconst params = $input.all()[0].json;\n\n// URL base\nlet url = `https://api.github.com/repos/${params.repo}/issues`;\n\n// Array di parametri query\nconst queryParams = [\n  `state=${params.state}`,\n  `per_page=${params.per_page}`,\n  `sort=${params.sort}`\n];\n\n// Aggiungi labels solo se presente\nif (params.labels && params.labels.trim().length > 0) {\n  queryParams.push(`labels=${params.labels}`);\n}\n\n// Aggiungi assignee solo se presente\nif (params.assignee && params.assignee.trim().length > 0) {\n  queryParams.push(`assignee=${params.assignee}`);\n}\n\n// Unisci tutto\nurl = url + '?' + queryParams.join('&');\n\nreturn [{\n  json: {\n    url: url\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -48
+      ],
+      "id": "b3ffff6f-9c08-42ae-8c37-c07fce88663b",
+      "name": "Build URL"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Build URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build URL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d02bfe0c-53bc-4f30-833a-399c54475cf9",
+  "meta": {
+    "instanceId": "6ac8d2dc76203984938fcda77a51bdd19f26607819abd9cdafd1682d34f1ed7a"
+  },
+  "id": "cBSwBCIjwTTVJola",
+  "tags": [
+    {
+      "updatedAt": "2025-12-16T21:25:10.044Z",
+      "createdAt": "2025-12-16T21:25:10.044Z",
+      "id": "rd3WVRGvAYwiuAq5",
+      "name": "AgnosticGitHubTool"
+    }
+  ]
+}
