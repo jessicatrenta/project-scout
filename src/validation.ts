@@ -18,10 +18,8 @@ export function validateTask(task: Task): void {
   }
 
   // Basic emoji/unicode validation
-  // Bug: This regex doesn't properly support all emoji
-  // Issue #3 will track fixing this
-  const basicAlphanumeric = /^[a-zA-Z0-9\s\-_.,!?]+$/;
-  if (!basicAlphanumeric.test(task.title)) {
+  const validTitle = /^[\p{L}\p{N}\p{P}\p{Z}\p{Emoji}]+$/u;
+  if (!validTitle.test(task.title)) {
     throw new ValidationError('Task title contains invalid characters');
   }
 
