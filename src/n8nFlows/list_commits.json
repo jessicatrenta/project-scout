@@ -1,0 +1,231 @@
+{
+  "name": "list_commits",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "path"
+            },
+            {
+              "name": "author"
+            },
+            {
+              "name": "since"
+            },
+            {
+              "name": "until"
+            },
+            {
+              "name": "sha"
+            },
+            {
+              "name": "repository"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        208
+      ],
+      "id": "0dfcffa1-9dec-49fa-ace3-5054d0e9cff0",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        736,
+        208
+      ],
+      "id": "e14774db-6a96-47f1-a6d7-061ecf166605",
+      "name": "HTTP Request",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "7ZB0pk2jfwrxkl9F",
+          "name": "Unnamed credential"
+        },
+        "httpHeaderAuth": {
+          "id": "UgAFYi0V1BhbBKJF",
+          "name": "myGitHub HeaderAuth"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -32
+      ],
+      "id": "92884037-61e7-4416-bfdb-940ad928dbc2",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"repo\": \"jessicatrenta/task-manager-test\",\n  \"path\": \"‎backend/src/middleware/validation.ts\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        -32
+      ],
+      "id": "b333f668-4b45-44de-bc80-5549bb797469",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepara parametri con valori di default\nconst input = $input.all()[0].json;\nconsole.log('input', input);\nreturn [{\n  json: {\n    repository: input.repository,\n    sha: input.sha || \"master\",\n    path: input.path || \"\",\n    author: input.author || \"\",\n    since: input.since || \"\",\n    until: input.until || \"\",\n    per_page: parseInt(input.per_page || \"100\")\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        208
+      ],
+      "id": "0ff28b9d-3199-4a99-bc8e-cf70ce1a8aab",
+      "name": "Parse Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formatta lista commit - GESTISCE ANCHE ITEM VUOTI\nconst items = $input.all();\n\nconsole.log(\"=== FORMAT OUTPUT DEBUG ===\");\nconsole.log(\"Items received:\", items ? items.length : \"null\");\n\n// Controlla se ci sono items\nif (!items || items.length === 0) {\n  console.log(\"No items received\");\n  return [{ \n    json: { \n      commits: [], \n      count: 0,\n      message: \"No data received from HTTP request\"\n    } \n  }];\n}\n\nconst firstItem = items[0];\nconsole.log(\"First item:\", firstItem);\n\n// GESTISCE ITEM VUOTO (il caso del tuo screenshot)\nif (!firstItem.json || Object.keys(firstItem.json).length === 0) {\n  console.log(\"Item is empty - GitHub returned []\");\n  return [{ \n    json: { \n      commits: [], \n      count: 0,\n      message: \"No commits found matching the criteria\"\n    } \n  }];\n}\n\nconst data = firstItem.json;\nconsole.log(\"Data type:\", typeof data);\nconsole.log(\"Is array?\", Array.isArray(data));\n\n// Se data è un array vuoto\nif (Array.isArray(data) && data.length === 0) {\n  console.log(\"Empty array returned\");\n  return [{ \n    json: { \n      commits: [], \n      count: 0,\n      message: \"No commits found matching the criteria\"\n    } \n  }];\n}\n\n// Estrai commits\nlet commits = [];\n\n// Caso 1: Multiple items (split attivo)\nif (items.length > 1) {\n  console.log(\"Multiple items detected\");\n  commits = items\n    .filter(item => item.json && item.json.sha)\n    .map(item => item.json);\n}\n// Caso 2: Single item con array\nelse if (Array.isArray(data)) {\n  console.log(\"Single item with array of\", data.length, \"commits\");\n  commits = data;\n}\n// Caso 3: Single commit object\nelse if (data && data.sha) {\n  console.log(\"Single commit object\");\n  commits = [data];\n}\n\nconsole.log(\"Total commits to format:\", commits.length);\n\n// Se ancora nessun commit\nif (commits.length === 0) {\n  return [{ \n    json: { \n      commits: [], \n      count: 0,\n      message: \"No commits found matching the criteria\"\n    } \n  }];\n}\n\n// Formatta ogni commit\nconst formatted = commits.map(commit => ({\n  sha: commit.sha.substring(0, 7),\n  full_sha: commit.sha,\n  message: commit.commit.message.split('\\n')[0],\n  full_message: commit.commit.message,\n  author: commit.commit.author.name,\n  author_email: commit.commit.author.email,\n  date: commit.commit.author.date,\n  url: commit.html_url,\n  committer: commit.commit.committer.name,\n  verified: commit.commit.verification?.verified || false\n}));\n\nconsole.log(\"Formatted\", formatted.length, \"commits\");\n\nreturn [{ \n  json: { \n    commits: formatted,\n    count: formatted.length,\n    message: `Found ${formatted.length} commit(s)`\n  } \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        208
+      ],
+      "id": "6dfd98d4-42d0-4d86-8af2-3e81c8817e08",
+      "name": "Format Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Costruisci URL per GitHub API\nconst params = $input.all()[0].json;\n\n// URL base\nlet url = `https://api.github.com/repos/${params.repository}/commits`;\n\n// Array di parametri query\nconst queryParams = [\n  `per_page=${params.per_page}`\n];\n\n// Aggiungi sha SOLO se specificato dall'utente\nif (params.sha && params.sha !== \"main\" && params.sha !== \"master\") {\n  queryParams.push(`sha=${params.sha}`);\n}\n\n// Aggiungi path solo se presente\nif (params.path && params.path.trim().length > 0) {\n  queryParams.push(`path=${encodeURIComponent(params.path)}`);\n}\n\n// Aggiungi author solo se presente\nif (params.author && params.author.trim().length > 0) {\n  queryParams.push(`author=${encodeURIComponent(params.author)}`);\n}\n\n// Aggiungi since solo se presente\nif (params.since && params.since.trim().length > 0) {\n  queryParams.push(`since=${params.since}`);\n}\n\n// Aggiungi until solo se presente\nif (params.until && params.until.trim().length > 0) {\n  queryParams.push(`until=${params.until}`);\n}\n\n// Unisci tutto\nurl = url + '?' + queryParams.join('&');\n\nreturn [{\n  json: {\n    url: url\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        208
+      ],
+      "id": "68e995b4-6b79-4a8c-bddf-696968784384",
+      "name": "Build URL"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Build URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build URL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "22d138e1-3f74-4420-8361-b22e606d0295",
+  "meta": {
+    "instanceId": "6ac8d2dc76203984938fcda77a51bdd19f26607819abd9cdafd1682d34f1ed7a"
+  },
+  "id": "Zgiy4L4REwk9wH5X",
+  "tags": [
+    {
+      "updatedAt": "2025-12-16T21:25:10.044Z",
+      "createdAt": "2025-12-16T21:25:10.044Z",
+      "id": "rd3WVRGvAYwiuAq5",
+      "name": "AgnosticGitHubTool"
+    }
+  ]
+}

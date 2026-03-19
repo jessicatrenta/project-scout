@@ -1,0 +1,204 @@
+{
+  "name": "search_github_issues",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "input"
+            },
+            {
+              "name": "repo"
+            },
+            {
+              "name": "repository"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        -32
+      ],
+      "id": "b8b034df-8d04-40a3-8be2-13af5ea2eb67",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e0eff82a-55e0-48c0-a0f8-71307d41bf6b",
+              "name": "repo",
+              "value": "={{ $json.repo || $json.repository }}",
+              "type": "string"
+            },
+            {
+              "id": "23626445-8d10-42b6-a540-751e75f04a1c",
+              "name": "query",
+              "value": "={{ $json.input || 'is:issue' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        -32
+      ],
+      "id": "46afcf1b-feed-459f-8338-44f00b11ee45",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/search/issues?q={{ $json.query }}+repo:{{ $json.repo }}+is:issue&sort=created&order=desc\n",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -16,
+        -32
+      ],
+      "id": "dead3f84-c67a-4f90-8025-3b976453c7c0",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "UgAFYi0V1BhbBKJF",
+          "name": "myGitHub HeaderAuth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formatta i risultati della ricerca issue\nconst items = $input.all();\n\nif (items.length === 0 || !items[0].json.items) {\n  return [{ json: { issues: [], count: 0 } }];\n}\n\nconst issues = items[0].json.items.map(issue => ({\n  number: issue.number,\n  title: issue.title,\n  state: issue.state,\n  url: issue.html_url,\n  created_at: issue.created_at,\n  updated_at: issue.updated_at,\n  labels: issue.labels.map(l => l.name),\n  user: issue.user.login\n}));\n\nreturn [{ \n  json: { \n    issues: issues,\n    count: issues.length\n  } \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -32
+      ],
+      "id": "74d1fba7-d423-4b3c-ae03-68ef78657054",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -304
+      ],
+      "id": "07d10f95-a1d9-42ce-baac-89700d547611",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"repo\": \"jessicatrenta/task-manager-test\",\n  \"input\": \"memory leak\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -432,
+        -304
+      ],
+      "id": "b9db53bd-84d9-4b03-836c-b3a1db6e65fb",
+      "name": "Edit Fields1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "316b383a-7088-4206-b52b-1716605c87d6",
+  "meta": {
+    "instanceId": "6ac8d2dc76203984938fcda77a51bdd19f26607819abd9cdafd1682d34f1ed7a"
+  },
+  "id": "GIXLTiDP8zZ1B9kX",
+  "tags": [
+    {
+      "updatedAt": "2025-12-16T21:25:10.044Z",
+      "createdAt": "2025-12-16T21:25:10.044Z",
+      "id": "rd3WVRGvAYwiuAq5",
+      "name": "AgnosticGitHubTool"
+    }
+  ]
+}
